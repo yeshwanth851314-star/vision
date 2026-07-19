@@ -12,7 +12,7 @@ RUN pnpm --filter @visionos/api-gateway db:generate
 RUN pnpm --filter @visionos/api-gateway... build
 
 FROM base AS runner
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 COPY --from=builder /app /app
 
 EXPOSE 8080

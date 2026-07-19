@@ -4,6 +4,16 @@ VisionOS is a context-aware generative AI stadium operations and fan experience 
 
 ---
 
+## Live Demo
+
+VisionOS is available as a public hackathon demonstration.
+
+**Live Application:** [https://vision-web-sigma.vercel.app](https://vision-web-sigma.vercel.app)
+
+The public demo uses the deployed VisionOS API Gateway on Render and live Gemini integration for natural-language reasoning/tool selection. Operational stadium telemetry and the final volunteer dispatch side effect are simulated in the current hackathon environment.
+
+---
+
 ## 1. Value Proposition
 VisionOS matches user roles, accessibility needs, and real-time crowd telemetry with verified stadium knowledge and Generative AI to deliver safe, compliant, and grounded navigational actions.
 

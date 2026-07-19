@@ -102,7 +102,7 @@ export const useTelemetryStore = create<ITelemetryState>((set, get) => ({
       },
     })),
 
-  connectSocketMesh: (gatewayUrl = "http://localhost:8080", token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJDT01NQU5ERVJfVkFOQ0UiLCJyb2xlIjoiQ09NTUFOREVSIn0.signature") => {
+  connectSocketMesh: (gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8080", token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJDT01NQU5ERVJfVkFOQ0UiLCJyb2xlIjoiQ09NTUFOREVSIn0.signature") => {
     if (get().socket) return;
 
     const socket = io(gatewayUrl, {

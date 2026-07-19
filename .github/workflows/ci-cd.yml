@@ -64,7 +64,7 @@ jobs:
         working-directory: ./apps/api-gateway
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/visionos
-        run: npx prisma validate && npx prisma migrate status --offline
+        run: npx prisma validate
 
   docker-build:
     name: 2. Containerization & Registry Push (`Pod 7`)

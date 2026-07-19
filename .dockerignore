@@ -9,7 +9,6 @@ service-account*.json
 # Exclude package managers & local development node caches
 node_modules
 .pnpm-store
-pnpm-lock.yaml
 
 # Exclude build & compilation outputs
 .next

@@ -32,6 +32,10 @@ jobs:
       - name: Install Monorepo Dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client Types
+        working-directory: ./apps/api-gateway
+        run: npx prisma generate
+
       - name: Run Linter
         run: pnpm turbo run lint
 

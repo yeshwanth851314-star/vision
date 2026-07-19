@@ -5,7 +5,7 @@
   "description": "Node.js 22 + Fastify + Socket.io v4 Real-Time Gateway with PostgreSQL/PostGIS ORM for VisionOS",
   "main": "./dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --external:fastify --external:@fastify/* --external:@prisma/client --external:socket.io --external:zod",
     "dev": "tsc --watch",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
+    "esbuild": "^0.28.1",
     "prisma": "^5.20.0",
     "typescript": "^5.6.3"
   }

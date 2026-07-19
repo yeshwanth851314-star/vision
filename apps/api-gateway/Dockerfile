@@ -12,10 +12,7 @@ RUN pnpm --filter @visionos/api-gateway... build
 
 FROM base AS runner
 ENV NODE_ENV=production
-COPY --from=builder /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/tsconfig.base.json ./
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api-gateway ./apps/api-gateway
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
+COPY --from=builder /app /app
 
 EXPOSE 8080
 WORKDIR /app/apps/api-gateway

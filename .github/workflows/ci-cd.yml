@@ -62,6 +62,8 @@ jobs:
 
       - name: Run Prisma ORM Schema & Migration Dry-Run
         working-directory: ./apps/api-gateway
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/visionos
         run: npx prisma validate && npx prisma migrate status --offline
 
   docker-build:

@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions decoding custom JWT claims
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.sub != null;
+    }
+    
+    function hasRole(roleName) {
+      return isAuthenticated() && request.auth.token.role == roleName;
+    }
+
+    function isOrganizerOrResponder() {
+      return hasRole('ROLE_ORGANIZER') || hasRole('ROLE_RESPONDER');
+    }
+
+    // ========================================================================
+    // RULE 1: GLOBAL SYSTEM STATE (`/stadium/system/global_state`)
+    // ========================================================================
+    match /stadium/system/global_state {
+      // All authenticated fans and volunteers can read the global state (to detect emergency overrides)
+      allow read: if isAuthenticated();
+      // Only Command Staff (`ROLE_ORGANIZER`) or system service accounts can trigger or clear emergency overrides
+      allow write: if hasRole('ROLE_ORGANIZER');
+    }
+
+    // ========================================================================
+    // RULE 2: CONCOURSE ZONES & TELEMETRY (`/stadium/zones/{zoneId}`)
+    // ========================================================================
+    match /stadium/zones/{zoneId} {
+      allow read: if isAuthenticated();
+      // Client apps cannot write directly to zones; only trusted API Gateway / Edge CV service accounts can mutate
+      allow write: if false;
+
+      match /telemetry_shards/{shardId} {
+        allow read: if isOrganizerOrResponder() || hasRole('ROLE_VOLUNTEER');
+        allow write: if false; // Mutated strictly via Admin SDK in Cloud Run API Gateway
+      }
+    }
+
+    // ========================================================================
+    // RULE 3: VENDORS & LIVE CONCESSIONS (`/stadium/vendors/{vendorId}`)
+    // ========================================================================
+    match /stadium/vendors/{vendorId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('ROLE_ORGANIZER');
+    }
+
+    // ========================================================================
+    // RULE 4: VOLUNTEER DISPATCHES (`/stadium/dispatches/{dispatchId}`)
+    // ========================================================================
+    match /stadium/dispatches/{dispatchId} {
+      // Volunteers can read dispatches assigned specifically to their JWT `sub`
+      allow read: if isOrganizerOrResponder() || 
+                  (hasRole('ROLE_VOLUNTEER') && resource.data.assignedVolunteerSub == request.auth.token.sub);
+      
+      // Volunteers can only update status (`ACKNOWLEDGED` -> `RESOLVED`) on their assigned tickets
+      allow update: if hasRole('ROLE_VOLUNTEER') && 
+                    resource.data.assignedVolunteerSub == request.auth.token.sub &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAtUtc', 'notes']);
+      
+      allow create, delete: if hasRole('ROLE_ORGANIZER');
+    }
+  }
+}

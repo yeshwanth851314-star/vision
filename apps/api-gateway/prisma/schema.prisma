@@ -1,0 +1,177 @@
+// VisionOS Enterprise ORM Schema (`apps/api-gateway/prisma/schema.prisma`)
+// Exact mapping of relational PostGIS schema from `11_Backend_Schema.md`
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model StadiumSector {
+  id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sectorCode   String             @unique @map("sector_code") @db.VarChar(16)
+  tierLevel    String             @map("tier_level") @db.VarChar(32)
+  maxCapacity  Int                @map("max_capacity")
+  // PostGIS spatial geometry column managed natively or via Raw queries
+  polygonGeom  Unsupported("geometry(Polygon, 4326)") @map("polygon_geom")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  zones        StadiumZone[]
+  tickets      AttendeeTicket[]
+  volunteers   VolunteerRoster[]
+
+  @@map("stadium_sectors")
+}
+
+model StadiumZone {
+  id              String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sectorId        String            @map("sector_id") @db.Uuid
+  zoneCode        String            @unique @map("zone_code") @db.VarChar(32)
+  zoneName        String            @map("zone_name") @db.VarChar(128)
+  maxDensityLimit Float             @default(3.0) @map("max_density_limit")
+  isVipOnly       Boolean           @default(false) @map("is_vip_only")
+  polygonGeom     Unsupported("geometry(Polygon, 4326)") @map("polygon_geom")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  sector          StadiumSector     @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  nodes           RoutingNode[]
+  dispatches      VolunteerDispatch[]
+  hvacZone        BmsHvacZone?
+
+  @@index([sectorId], map: "idx_stadium_zones_sector")
+  @@map("stadium_zones")
+}
+
+model RoutingNode {
+  id               String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  zoneId           String?          @map("zone_id") @db.Uuid
+  nodeCode         String           @unique @map("node_code") @db.VarChar(64)
+  nodeType         String           @map("node_type") @db.VarChar(32)
+  isAdaAccessible  Boolean          @default(true) @map("is_ada_accessible")
+  pointGeom        Unsupported("geometry(Point, 4326)") @map("point_geom")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  zone             StadiumZone?     @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  outgoingEdges    RoutingEdge[]    @relation("FromNode")
+  incomingEdges    RoutingEdge[]    @relation("ToNode")
+
+  @@map("stadium_routing_nodes")
+}
+
+model RoutingEdge {
+  id                       String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fromNodeId               String       @map("from_node_id") @db.Uuid
+  toNodeId                 String       @map("to_node_id") @db.Uuid
+  distanceMeters           Float        @map("distance_meters")
+  baselineTraversalSeconds Float        @map("baseline_traversal_seconds")
+  isAdaCompliant           Boolean      @default(true) @map("is_ada_compliant")
+  hasStairs                Boolean      @default(false) @map("has_stairs")
+  maxInclineRatio          Float?       @default(0.0) @map("max_incline_ratio")
+  lineGeom                 Unsupported("geometry(LineString, 4326)") @map("line_geom")
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  fromNode                 RoutingNode  @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode                   RoutingNode  @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@index([fromNodeId, toNodeId], map: "idx_routing_edges_nodes")
+  @@map("stadium_routing_edges")
+}
+
+model AttendeeTicket {
+  id                    String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sectorId              String        @map("sector_id") @db.Uuid
+  ticketBarcodeHash     String        @unique @map("ticket_barcode_hash") @db.VarChar(128)
+  seatRow               String        @map("seat_row") @db.VarChar(16)
+  seatNumber            String        @map("seat_number") @db.VarChar(16)
+  isVipTier             Boolean       @default(false) @map("is_vip_tier")
+  requiresAdaWheelchair Boolean       @default(false) @map("requires_ada_wheelchair")
+  isCheckedIn           Boolean       @default(false) @map("is_checked_in")
+  checkedInAt           DateTime?     @map("checked_in_at") @db.Timestamptz
+  entryGateCode         String?       @map("entry_gate_code") @db.VarChar(32)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  sector                StadiumSector @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketBarcodeHash], map: "idx_attendee_tickets_hash")
+  @@index([isCheckedIn, sectorId], map: "idx_attendee_tickets_checkin")
+  @@map("attendee_tickets")
+}
+
+model VolunteerRoster {
+  id                 String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userJwtSub         String              @unique @map("user_jwt_sub") @db.VarChar(128)
+  fullName           String              @map("full_name") @db.VarChar(128)
+  assignedSectorId   String?             @map("assigned_sector_id") @db.Uuid
+  isMedicalCertified Boolean             @default(false) @map("is_medical_certified")
+  isMultilingual     Boolean             @default(false) @map("is_multilingual")
+  fluentLanguages    String[]            @default(["en"]) @map("fluent_languages")
+  currentStatus      String              @default("ON_DUTY") @map("current_status") @db.VarChar(32)
+  lastKnownGeom      Unsupported("geometry(Point, 4326)")? @map("last_known_geom")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  sector             StadiumSector?      @relation(fields: [assignedSectorId], references: [id], onDelete: SetNull)
+  dispatches         VolunteerDispatch[]
+
+  @@index([currentStatus, assignedSectorId], map: "idx_volunteers_status")
+  @@map("volunteer_rosters")
+}
+
+model VolunteerDispatch {
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  zoneId         String           @map("zone_id") @db.Uuid
+  volunteerId    String?          @map("volunteer_id") @db.Uuid
+  priorityLevel  String           @map("priority_level") @db.VarChar(16)
+  hazardCategory String           @map("hazard_category") @db.VarChar(32)
+  status         String           @default("PENDING") @map("status") @db.VarChar(32)
+  taskDescription String          @map("task_description") @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  acknowledgedAt DateTime?        @map("acknowledged_at") @db.Timestamptz
+  resolvedAt     DateTime?        @map("resolved_at") @db.Timestamptz
+
+  zone           StadiumZone      @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  volunteer      VolunteerRoster? @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+
+  @@index([status, priorityLevel], map: "idx_dispatches_status")
+  @@index([zoneId], map: "idx_dispatches_zone")
+  @@map("volunteer_dispatches")
+}
+
+model BmsHvacZone {
+  id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  zoneId            String       @unique @map("zone_id") @db.Uuid
+  bacnetDeviceId    Int          @unique @map("bacnet_device_id")
+  currentAirflowPct Int          @default(100) @map("current_airflow_pct")
+  currentTempCelsius Float       @default(21.5) @map("current_temp_celsius")
+  isThrottled       Boolean      @default(false) @map("is_throttled")
+  throttledAt       DateTime?    @map("throttled_at") @db.Timestamptz
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  zone              StadiumZone  @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@map("bms_hvac_zones")
+}
+
+model AuditLog {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  traceId        String   @map("trace_id") @db.VarChar(64)
+  actorJwtSub    String   @map("actor_jwt_sub") @db.VarChar(128)
+  actorRole      String   @map("actor_role") @db.VarChar(32)
+  actionType     String   @map("action_type") @db.VarChar(64)
+  targetResource String   @map("target_resource") @db.VarChar(128)
+  payloadBefore  Json?    @map("payload_before") @db.JsonB
+  payloadAfter   Json     @map("payload_after") @db.JsonB
+  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorJwtSub, createdAt(sort: Desc)], map: "idx_audit_logs_actor")
+  @@index([actionType, createdAt(sort: Desc)], map: "idx_audit_logs_action")
+  @@map("audit_logs")
+}

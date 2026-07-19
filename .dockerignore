@@ -1,0 +1,34 @@
+# Exclude local configuration files & secrets from Docker build contexts
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Exclude package managers & local development node caches
+node_modules
+.pnpm-store
+pnpm-lock.yaml
+
+# Exclude build & compilation outputs
+.next
+.turbo
+dist
+build
+coverage
+.nyc_output
+*.log
+
+# Exclude testing reports & artifacts
+playwright-report
+test-results
+coverage-report
+walkthrough.md
+implementation_plan.md
+
+# Exclude git repository metadata
+.git
+.github
+.gitignore
+.dockerignore

@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "VisionOS Mobile",
+    "slug": "visionos-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "visionos",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.visionos.stadium"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0F19"
+      },
+      "package": "com.visionos.stadium"
+    },
+    "plugins": ["expo-router"]
+  }
+}

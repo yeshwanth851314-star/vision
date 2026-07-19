@@ -1,0 +1,47 @@
+name: VisionOS Cross-Browser Playwright Verification
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Nightly at midnight
+  workflow_dispatch: # Manual trigger
+
+env:
+  GCP_PROJECT_ID: visionos-stadium-prod
+
+jobs:
+  playwright-cross-browser:
+    name: Playwright Cross-Browser Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js 22 & pnpm 9
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.12.0
+
+      - name: Install Monorepo Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers with Dependencies
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright Multi-Environment Suites
+        run: npx playwright test
+
+      - name: Upload Playwright Test Evidence & Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-cross-browser-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

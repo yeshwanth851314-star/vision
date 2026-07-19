@@ -8,6 +8,7 @@ WORKDIR /app
 FROM base AS builder
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN npx prisma generate --schema=apps/api-gateway/prisma/schema.prisma
 RUN pnpm --filter @visionos/api-gateway... build
 
 FROM base AS runner
